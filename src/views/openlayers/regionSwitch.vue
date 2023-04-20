@@ -12,15 +12,18 @@
 </template>
 
 <script>
-import $ from 'jquery'
-import VDistpicker from 'v-distpicker'
-import { RegionSelects } from 'v-region'
+// import VDistpicker from 'v-distpicker'
+// import { RegionSelects } from 'v-region'
 import olMap from '@/components/Openlayers'
 import Bus from '@/components/Openlayers/util/bus'
 
 export default {
   name: 'KeyboardChart',
-  components: { olMap, RegionSelects, VDistpicker },
+  components: {
+    olMap
+    // RegionSelects,
+    // VDistpicker
+  },
   data() {
     return {
       map: undefined,
