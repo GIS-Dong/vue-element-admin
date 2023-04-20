@@ -1,0 +1,55 @@
+{
+    "layers": [
+        {
+            "id": "wg310795-e51b-071e-6ed5-a7lnk9k765e",
+            "layerTag": "XZQXJ_KH",
+            "label": "县界图层",
+            "type": "geoserver-wfs",
+            "url": "http://122.224.233.68:11813/geoserver/cite/wfs",
+            "visibleLayers": ["cite:XZQXJ_KH"],
+            "minResolution": 0.00274658203125,
+            "mapIndex": 51.0,
+            "initChecked": true,
+            "group": "2",
+            "identifyField": [{
+                "lyr": "http://122.224.233.68:11813/geoserver",
+                "search": "",
+                "display": ""
+            }]
+        },
+        {
+            "id": "wg310795-e51b-071e-6ed5-a7lnk9k766e",
+            "layerTag": "XZQZJ_KH",
+            "label": "镇界图层",
+            "type": "geoserver-wfs",
+            "url": "http://122.224.233.68:11813/geoserver/cite/wfs",
+            "visibleLayers": ["cite:XZQZJ_KH"],
+            "minResolution": 0.0000858306884765625,
+            "maxResolution": 0.00274658203125,
+            "mapIndex": 51.0,
+            "initChecked": true,
+            "group": "2",
+            "identifyField": [{
+                "lyr": "http://122.224.233.68:11813/geoserver",
+                "search": "",
+                "display": ""
+            }]
+        },
+        {
+            "id": "wg310795-e51b-071e-6ed5-a7lnk9k767e",
+            "layerTag": "ouhaienterprise",
+            "label": "企业图层",
+            "type": "geoserver-wfs",
+            "url": "http://122.224.233.68:11813/geoserver/cite/wfs",
+            "visibleLayers": ["cite:ouhaienterprise"],
+            "mapIndex": 51.0,
+            "initChecked": true,
+            "group": "2",
+            "identifyField": [{
+                "lyr": "http://122.224.233.68:11813/geoserver",
+                "search": "",
+                "display": ""
+            }]
+        }
+    ]
+  }

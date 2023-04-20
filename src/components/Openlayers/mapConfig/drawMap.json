@@ -1,0 +1,20 @@
+{
+    "layers": [
+        {
+            "id": "wg310795-e51b-071e-6ed5-a7lnk9k766e",
+            "layerTag": "XZQZJ_KH",
+            "label": "镇界图层",
+            "type": "geoserver-wfs",
+            "url": "http://220.191.236.70/geoserver/cite/wfs",
+            "visibleLayers": ["cite:XZQZJ_KH"],
+            "mapIndex": 51.0,
+            "initChecked": true,
+            "group": "2",
+            "identifyField": [{
+                "lyr": "http://220.191.236.70/geoserver",
+                "search": "",
+                "display": ""
+            }]
+        }
+    ]
+  }
