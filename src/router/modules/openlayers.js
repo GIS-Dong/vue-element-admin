@@ -23,6 +23,12 @@ const openlayersRouter = {
       component: () => import('@/views/openlayers/regionSwitch'),
       name: 'regionSwitch',
       meta: { title: '行政区切换', noCache: true }
+    },
+    {
+      path: 'SwitchBaseLayer',
+      component: () => import('@/views/openlayers/SwitchBaseLayer'),
+      name: 'SwitchBaseLayer',
+      meta: { title: '常见底图切换(无偏移)', noCache: true }
     }
   ]
 }

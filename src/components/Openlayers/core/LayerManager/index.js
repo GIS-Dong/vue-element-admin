@@ -834,9 +834,9 @@ class LayerManager {
    */
   addLayerToMap(layer) {
     if (layer instanceof TileLayer || layer instanceof VectorTileLayer) {
-      const layerProjectionCode = 'EPSG:4490'
-      // let layerProjectionCode = layer.getSource().getProjection().getCode() === 'EPSG:900913' || layer.getSource().getProjection().getCode() === 'EPSG:102100' ||
-      //   layer.getSource().getProjection().getCode() === 'EPSG:102113' ? 'EPSG:3857' : layer.getSource().getProjection().getCode()
+      // const layerProjectionCode = 'EPSG:4490'
+      const layerProjectionCode = layer.getSource().getProjection().getCode() === 'EPSG:900913' || layer.getSource().getProjection().getCode() === 'EPSG:102100' ||
+        layer.getSource().getProjection().getCode() === 'EPSG:102113' ? 'EPSG:3857' : layer.getSource().getProjection().getCode()
       // 判断当前坐标系是否与要加载的切片图层的坐标系一致，如果一致则直接叠加图层，否则先删除所有的切片图层，再加载图层
       if (
         this.map
@@ -857,7 +857,7 @@ class LayerManager {
           // Bus.$emit('setLayerChecked', this.tildLayer[i].get('id'), false)
         }
         // 更改坐标系
-        this.changeMapProjection(layer.getSource().getProjection())
+        // this.changeMapProjection(layer.getSource().getProjection())
         this.map.getView().setMaxZoom(layer.getSource().tileGrid.maxZoom)
         this.map.addLayer(layer)
         this.setMinAndMaxZoom(layer.getSource().tileGrid.minZoom, layer.getSource().tileGrid.maxZoom)
@@ -868,7 +868,7 @@ class LayerManager {
         }
       } else {
         // 更改坐标系
-        this.changeMapProjection(layer.getSource().getProjection())
+        // this.changeMapProjection(layer.getSource().getProjection())
         this.map.getView().setMaxZoom(layer.getSource().tileGrid.maxZoom)
         this.map.addLayer(layer)
         this.setMinAndMaxZoom(layer.getSource().tileGrid.minZoom, layer.getSource().tileGrid.maxZoom)

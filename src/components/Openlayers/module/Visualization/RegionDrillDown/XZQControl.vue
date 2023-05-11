@@ -14,6 +14,7 @@
 
 <script>
 import $ from 'jquery'
+import XZQData from '../../../mapConfig/XZQ_ZJ'
 import Bus from '../../../util/bus'
 import { GeoJSON } from 'ol/format'
 import { getCenter } from 'ol/extent'
@@ -67,19 +68,22 @@ export default {
       // this.switchByCode(this.user_xzqdm)
       this.userLevel = this.getLevel(user_xzqdm)
       if (this.allFeatures.length === 0) {
-        $.ajax({
-          url:
-            'https://szh.rfb.zj.gov.cn:8180/geoserver/xzq_data/wms?service=WMS&version=1.1.0&request=GetMap&layers=xzq_data:jb_xzq_zj_value&bbox=118.022573565%2C27.1434226850001%2C122.83420269%2C31.18255606&width=768&height=644&srs=EPSG%3A4490&styles=&format=geojson',
-          type: 'GET',
-          dataType: 'json',
-          success: response => {
-            this.allFeatures = this.formatData(response)
-            this.switchByCode(this.user_xzqdm)
-          },
-          error: error => {
-            console.error(error)
-          }
-        })
+        this.allFeatures = this.formatData(XZQData)
+        this.switchByCode(this.user_xzqdm)
+
+        // $.ajax({
+        //   url:
+        //     'https://szh.rfb.zj.gov.cn:8180/geoserver/xzq_data/wms?service=WMS&version=1.1.0&request=GetMap&layers=xzq_data:jb_xzq_zj_value&bbox=118.022573565%2C27.1434226850001%2C122.83420269%2C31.18255606&width=768&height=644&srs=EPSG%3A4490&styles=&format=geojson',
+        //   type: 'GET',
+        //   dataType: 'json',
+        //   success: response => {
+        //     this.allFeatures = this.formatData(response)
+        //     this.switchByCode(this.user_xzqdm)
+        //   },
+        //   error: error => {
+        //     console.error(error)
+        //   }
+        // })
       } else {
         this.switchByCode(this.user_xzqdm)
       }

@@ -67,6 +67,11 @@ export default {
         vec: {
           id: 'cbopd126-609b-loba-3ecc-ea3djk88ccc4',
           label: '全球矢量地图服务',
+          // type: 'BaiduMap',
+          // type: 'gaode',
+          // url: 'http://wprd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',
+          // type: 'tiled',
+          // url: 'http://cache1.arcgisonline.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer',
           type: 'tdt',
           url: 'https://t' + Math.round(Math.random() * 7) + '.tianditu.gov.cn/vec_c/wmts?tk=' + this.tk,
           visibleLayers: ['vec'],

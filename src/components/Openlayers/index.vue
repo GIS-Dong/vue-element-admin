@@ -64,7 +64,7 @@ export default {
     // 地图初始坐标系
     projection: {
       type: String,
-      default: 'EPSG:4490'
+      default: 'EPSG:4326'
     },
     // WFS图层样式
     layerStyles: {

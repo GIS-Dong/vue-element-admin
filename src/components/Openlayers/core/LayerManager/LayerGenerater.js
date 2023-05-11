@@ -6,7 +6,8 @@ import {
   XYZ as XYZSource,
   WMTS as WMTSSource,
   ImageArcGISRest,
-  Cluster
+  Cluster,
+  TileImage
 } from 'ol/source.js'
 import { optionsFromCapabilities } from 'ol/source/WMTS.js'
 import WMTSCapabilities from 'ol/format/WMTSCapabilities.js'
@@ -22,7 +23,7 @@ import XYZ from 'ol/source/XYZ.js'
 import MVT from 'ol/format/MVT.js'
 import { transformExtent } from 'ol/proj'
 import { newGuid } from '../../util/common'
-import { getWidth, getTopLeft } from 'ol/extent'
+import { getWidth, getTopLeft, applyTransform } from 'ol/extent'
 import EsriJSON from 'ol/format/EsriJSON'
 import GeoJSON from 'ol/format/GeoJSON.js'
 import GML3 from 'ol/format/GML3'
@@ -31,6 +32,148 @@ import { tile as tileStrategy, bbox as bboxStrategy } from 'ol/loadingstrategy.j
 
 import { equalTo as EqualToFilter, and as AndFilter, or as OrFilter } from 'ol/format/filter.js'
 import { WFS } from 'ol/format.js'
+import { Projection, addProjection, addCoordinateTransforms, get } from 'ol/proj'
+import projzh from 'projzh/index'
+
+var forEachPoint = function(func) {
+  return function(input, opt_output, opt_dimension) {
+    var len = input.length
+    var dimension = opt_dimension || 2
+    var output
+    if (opt_output) {
+      output = opt_output
+    } else {
+      if (dimension !== 2) {
+        output = input.slice()
+      } else {
+        output = new Array(len)
+      }
+    }
+    for (var offset = 0; offset < len; offset += dimension) {
+      func(input, output, offset)
+    }
+    return output
+  }
+}
+var gcj02 = {}
+var i = 0
+var PI = Math.PI
+var AXIS = 6378245.0
+var OFFSET = 0.00669342162296594323 // (a^2 - b^2) / a^2
+
+function delta(wgLon, wgLat) {
+  var dLat = transformLat(wgLon - 105.0, wgLat - 35.0)
+  var dLon = transformLon(wgLon - 105.0, wgLat - 35.0)
+  var radLat = (wgLat / 180.0) * PI
+  var magic = Math.sin(radLat)
+  magic = 1 - OFFSET * magic * magic
+  var sqrtMagic = Math.sqrt(magic)
+  dLat = (dLat * 180.0) / (((AXIS * (1 - OFFSET)) / (magic * sqrtMagic)) * PI)
+  dLon = (dLon * 180.0) / ((AXIS / sqrtMagic) * Math.cos(radLat) * PI)
+  return [dLon, dLat]
+}
+
+function outOfChina(lon, lat) {
+  if (lon < 72.004 || lon > 137.8347) {
+    return true
+  }
+  if (lat < 0.8293 || lat > 55.8271) {
+    return true
+  }
+  return false
+}
+
+function transformLat(x, y) {
+  var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x))
+  ret += ((20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0) / 3.0
+  ret += ((20.0 * Math.sin(y * PI) + 40.0 * Math.sin((y / 3.0) * PI)) * 2.0) / 3.0
+  ret += ((160.0 * Math.sin((y / 12.0) * PI) + 320 * Math.sin((y * PI) / 30.0)) * 2.0) / 3.0
+  return ret
+}
+
+function transformLon(x, y) {
+  var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x))
+  ret += ((20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0) / 3.0
+  ret += ((20.0 * Math.sin(x * PI) + 40.0 * Math.sin((x / 3.0) * PI)) * 2.0) / 3.0
+  ret += ((150.0 * Math.sin((x / 12.0) * PI) + 300.0 * Math.sin((x / 30.0) * PI)) * 2.0) / 3.0
+  return ret
+}
+
+gcj02.toWGS84 = forEachPoint(function(input, output, offset) {
+  var lng = input[offset]
+  var lat = input[offset + 1]
+  if (!outOfChina(lng, lat)) {
+    var deltaD = delta(lng, lat)
+    lng = lng - deltaD[0]
+    lat = lat - deltaD[1]
+  }
+  output[offset] = lng
+  output[offset + 1] = lat
+})
+
+gcj02.fromWGS84 = forEachPoint(function(input, output, offset) {
+  var lng = input[offset]
+  var lat = input[offset + 1]
+  if (!outOfChina(lng, lat)) {
+    var deltaD = delta(lng, lat)
+    lng = lng + deltaD[0]
+    lat = lat + deltaD[1]
+  }
+  output[offset] = lng
+  output[offset + 1] = lat
+})
+
+var sphericalMercator = {}
+
+var RADIUS = 6378137
+var MAX_LATITUDE = 85.0511287798
+var RAD_PER_DEG = Math.PI / 180
+
+sphericalMercator.forward = forEachPoint(function(input, output, offset) {
+  var lat = Math.max(Math.min(MAX_LATITUDE, input[offset + 1]), -MAX_LATITUDE)
+  var sin = Math.sin(lat * RAD_PER_DEG)
+
+  output[offset] = RADIUS * input[offset] * RAD_PER_DEG
+  output[offset + 1] = (RADIUS * Math.log((1 + sin) / (1 - sin))) / 2
+})
+
+sphericalMercator.inverse = forEachPoint(function(input, output, offset) {
+  output[offset] = input[offset] / RADIUS / RAD_PER_DEG
+  output[offset + 1] = (2 * Math.atan(Math.exp(input[offset + 1] / RADIUS)) - Math.PI / 2) / RAD_PER_DEG
+})
+
+// var projzh = {}
+projzh.ll2gmerc = function(input, opt_output, opt_dimension) {
+  const output = gcj02.fromWGS84(input, opt_output, opt_dimension)
+  return projzh.ll2smerc(output, output, opt_dimension)
+}
+projzh.gmerc2ll = function(input, opt_output, opt_dimension) {
+  const output = projzh.smerc2ll(input, input, opt_dimension)
+  return gcj02.toWGS84(output, opt_output, opt_dimension)
+}
+projzh.smerc2gmerc = function(input, opt_output, opt_dimension) {
+  let output = projzh.smerc2ll(input, input, opt_dimension)
+  output = gcj02.fromWGS84(output, output, opt_dimension)
+  return projzh.ll2smerc(output, output, opt_dimension)
+}
+projzh.gmerc2smerc = function(input, opt_output, opt_dimension) {
+  let output = projzh.smerc2ll(input, input, opt_dimension)
+  output = gcj02.toWGS84(output, output, opt_dimension)
+  return projzh.ll2smerc(output, output, opt_dimension)
+}
+
+projzh.ll2smerc = sphericalMercator.forward
+projzh.smerc2ll = sphericalMercator.inverse
+
+const gcj02Extent = [-20037508.342789244, -20037508.342789244, 20037508.342789244, 20037508.342789244]
+const gcjMecator = new Projection({
+  code: 'GCJ-02',
+  extent: gcj02Extent,
+  units: 'm'
+})
+addProjection(gcjMecator)
+addCoordinateTransforms('EPSG:4326', gcjMecator, projzh.ll2gmerc, projzh.gmerc2ll)
+addCoordinateTransforms('EPSG:3857', gcjMecator, projzh.smerc2gmerc, projzh.gmerc2smerc)
 
 class LayerGenerater {
   constructor(map, layerStyles) {
@@ -451,6 +594,12 @@ class LayerGenerater {
             reject(new Error('图层' + '"' + data.label + '"' + '加载失败,请检查配置是否正确!'))
           }
         })
+      })
+    } else if (data.type === 'BaiduMap') {
+      return new Promise(resolve => {
+        // eslint-disable-next-line camelcase
+        const baidu_layer = this.createBaiDuLayer(data)
+        resolve(baidu_layer)
       })
     } else if (data.type === 'gaode') {
       return new Promise(resolve => {
@@ -1205,6 +1354,104 @@ class LayerGenerater {
    * 创建高德地图服务图层
    * @param {*} data
    */
+  createBaiDuLayer(data) {
+    const extent = [-20037726.37, -12474104.17, 20037726.37, 12474104.17]
+    // var extent = [72.004, 0.8293, 137.8347, 55.8271];
+    const baiduMercator = new Projection({
+      code: 'baidu',
+      extent: extent,
+      units: 'm'
+    })
+    addProjection(baiduMercator)
+    addCoordinateTransforms(
+      'EPSG:4326',
+      baiduMercator,
+      projzh.ll2bmerc,
+      projzh.bmerc2ll
+    )
+    addCoordinateTransforms(
+      'EPSG:3857',
+      baiduMercator,
+      projzh.smerc2bmerc,
+      projzh.bmerc2smerc
+    )
+
+    const bmercResolutions = new Array(19)
+    // eslint-disable-next-line no-plusplus
+    for (let i = 0; i < 19; ++i) {
+      // eslint-disable-next-line no-restricted-properties
+      bmercResolutions[i] = Math.pow(2, 18 - i)
+    }
+
+    const layer = new TileLayer({
+      id: data.id,
+      layerTag: data.layerTag,
+      opacity: 1,
+      // initExtent: extent,
+      zIndex: data.mapIndex,
+      source: new XYZSource({
+        projection: 'baidu',
+        maxZoom: 18,
+        // eslint-disable-next-line func-names
+        tileUrlFunction: function(tileCoord) {
+          let x = tileCoord[1]
+          let y = tileCoord[2] + 1
+          const z = tileCoord[0]
+          if (x < 0) {
+            x = -x
+          }
+          if (y < 0) {
+            y = -y
+          }
+          // if (x < 0) {
+          //   x = 'M' + -x;
+          // }
+          // if (y < 0) {
+          //   y = 'M' + -y;
+          // }
+          /**
+           * 默认地图样式(normal)
+           * 清新蓝风格(light)
+           * 黑夜风格(dark)
+           * 红色警惕风格(redalert)
+           * 精简风格(googlelite)
+           * 天然绿风格(grassgreen)
+           * 午夜蓝风格(midnight)
+           * 浪漫粉风格(pink)
+           * 青春绿风格(darkgreen)
+           * 清新蓝绿风格(bluish)
+           * 高端灰风格(grayscale)
+           * 强边界风格(hardedge)
+           */
+          //  return "http://online3.map.bdimg.com/onlinelabel/?qt=tile&x=" + x + "&y=" + y + "&z=" + z + "&styles=pl&udt=20151021&scaler=1&p=1";
+          // return 'http://api0.map.bdimg.com/customimage/tile?customid=midnight&x=' + x
+          // + '&y=' + y + '&z=' + z;
+          return (
+            'https://api.map.baidu.com/customimage/tile?x=' +
+            x +
+            '&y=' +
+            y +
+            '&z=' +
+            z +
+            '&udt=20170908&scale=2&ak=ZUONbpqGBsYGXNIYHicvbAbM' +
+            '&styles=t%3Aland%7Ce%3Ag.f%7Cc%3A%23122231ff%2Ct%3Awater%7Ce%3Aall%7Cc%3A%230f3260ff%2Ct%3Agreen%7Ce%3Ag.f%7Cc%3A%232d5470ff%2Ct%3Ahighway%7Ce%3Aall%7Cv%3Aoff%7Cc%3A%232d5470ff%2Ct%3Aarterial%7Ce%3Aall%7Cc%3A%232d5470ff%2Ct%3Alocal%7Ce%3Aall%7Cc%3A%2320325cff%2Ct%3Amanmade%7Ce%3Ag.f%7Cc%3A%2320325cff%2Ct%3Abuilding%7Ce%3Aall%7Cc%3A%231b3453ff%2Ct%3Asubway%7Ce%3Al.i%7Cv%3Aon%7Cc%3A%232d5470ff%2Ct%3Aroad%7Ce%3Al.t.f%7Cc%3A%232fe4d6ff%2Ct%3Aadministrative%7Ce%3Al.t.f%7Cc%3A%232fe4d6ff%2Ct%3Apoi%7Ce%3Al%7Cv%3Aoff%2Ct%3Aadministrative%7Ce%3Al.t.s%7Cc%3A%232d5470ff%2Ct%3Asubway%7Ce%3Ag.s%7Cc%3A%232d5470ff%2Ct%3Atown%7Ce%3Al%7Cv%3Aoff%2Ct%3Asubway%7Ce%3Al.t.s%7Cc%3A%2320325cff%2Ct%3Amanmade%7Ce%3Al.i%7Cv%3Aoff%2Ct%3Amanmade%7Ce%3Al.t.s%7Cv%3Aoff'
+          )
+        },
+        tileGrid: new TileGrid({
+          resolutions: bmercResolutions,
+          origin: [0, 0],
+          extent: applyTransform(extent, projzh.ll2bmerc),
+          tileSize: [256, 256]
+        })
+      })
+    })
+    return layer
+  }
+
+  /**
+   * 创建高德地图服务图层
+   * @param {*} data
+   */
   createGaoDeLayer(data) {
     const layer = new TileLayer({
       id: data.id,
@@ -1215,6 +1462,7 @@ class LayerGenerater {
       isFit: typeof data.isFit === 'boolean' ? data.isFit : true,
       source: new XYZSource({
         crossOrigin: 'anonymous',
+        projection: gcjMecator,
         url: data.url
       })
     })
